@@ -12,6 +12,7 @@ import { PayoutReportView } from '@/components/PayoutReportView';
 import { CommissionReportView } from '@/components/CommissionReportView';
 import { AddPageModal } from '@/components/AddPageModal';
 import { AddGroupModal } from '@/components/AddGroupModal';
+import { FacebookConnectModal } from '@/components/FacebookConnectModal';
 import { 
   FacebookPage, 
   PageGroup, 
@@ -26,7 +27,7 @@ import {
   getMockPayoutReports,
   getMockUserCommissions
 } from '@/lib/mock-data';
-import { BarChart2, Landmark, Award, Sparkles, Database, CheckCircle, AlertCircle } from 'lucide-react';
+import { BarChart2, Landmark, Award, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function DashboardPage() {
   const [activeViewMode, setActiveViewMode] = useState<'overview' | 'payouts' | 'commissions'>('overview');
@@ -45,27 +46,9 @@ export default function DashboardPage() {
   const [isMock, setIsMock] = useState(true);
   const [isAddPageOpen, setIsAddPageOpen] = useState(false);
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
+  const [isFacebookConnectOpen, setIsFacebookConnectOpen] = useState(false);
   
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  // Lắng nghe URL params thông báo sau khi kết nối Facebook hoặc Auth
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('fb_connected') === 'success') {
-        const count = params.get('count') || '0';
-        setToastMessage({
-          type: 'success',
-          text: `Kết nối Facebook thành công! Đã tự động đồng bộ ${count} Trang vào hệ thống.`
-        });
-      } else if (params.get('fb_error')) {
-        setToastMessage({
-          type: 'error',
-          text: `Lỗi kết nối Facebook: ${params.get('fb_error')}`
-        });
-      }
-    }
-  }, []);
 
   const fetchReport = async () => {
     try {
@@ -125,6 +108,14 @@ export default function DashboardPage() {
     setGroups(prev => [...prev, newGroup]);
   };
 
+  const handleFacebookConnectSuccess = (count: number) => {
+    setToastMessage({
+      type: 'success',
+      text: `Kết nối Facebook thành công! Đã tự động quét và lưu ${count} Trang vào cơ sở dữ liệu.`
+    });
+    fetchReport();
+  };
+
   const displayedPages = selectedGroupId
     ? pages.filter(p => p.group_ids && p.group_ids.includes(selectedGroupId))
     : pages;
@@ -163,7 +154,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Header with Google Auth and Facebook Connect */}
+      {/* Header */}
       <Header
         onSyncNow={handleSyncNow}
         isSyncing={isSyncing}
@@ -171,6 +162,7 @@ export default function DashboardPage() {
         isBmSyncing={isBmSyncing}
         onOpenAddPage={() => setIsAddPageOpen(true)}
         onOpenAddGroup={() => setIsAddGroupOpen(true)}
+        onOpenFacebookConnect={() => setIsFacebookConnectOpen(true)}
         isMock={isMock}
         userRole={userRole}
         onRoleChange={setUserRole}
@@ -277,6 +269,12 @@ export default function DashboardPage() {
         isOpen={isAddGroupOpen}
         onClose={() => setIsAddGroupOpen(false)}
         onGroupAdded={handleGroupAdded}
+      />
+
+      <FacebookConnectModal
+        isOpen={isFacebookConnectOpen}
+        onClose={() => setIsFacebookConnectOpen(false)}
+        onSuccess={handleFacebookConnectSuccess}
       />
     </main>
   );
