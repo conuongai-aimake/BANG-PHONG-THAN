@@ -1,22 +1,30 @@
 'use client';
 
 import React from 'react';
-import { RefreshCw, Plus, FolderPlus, ShieldCheck, Activity } from 'lucide-react';
+import { RefreshCw, Plus, FolderPlus, Activity, Building2, UserCircle, Shield, Briefcase } from 'lucide-react';
 
 interface HeaderProps {
   onSyncNow: () => void;
   isSyncing: boolean;
+  onSyncBm: () => void;
+  isBmSyncing: boolean;
   onOpenAddPage: () => void;
   onOpenAddGroup: () => void;
   isMock: boolean;
+  userRole: string;
+  onRoleChange: (role: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onSyncNow,
   isSyncing,
+  onSyncBm,
+  isBmSyncing,
   onOpenAddPage,
   onOpenAddGroup,
   isMock,
+  userRole,
+  onRoleChange
 }) => {
   return (
     <header className="glass-panel" style={{ padding: '16px 24px', marginBottom: '24px' }}>
@@ -42,64 +50,88 @@ export const Header: React.FC<HeaderProps> = ({
                 BẢNG PHONG THẦN
               </h1>
               <span className="badge badge-purple" style={{ fontSize: '0.7rem' }}>
-                PRO ANALYTICS
+                MONETIZATION ENTERPRISE
               </span>
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Theo dõi hoạt động & Báo cáo doanh thu Trang Facebook kiếm tiền
+              Quản trị BM, Báo cáo Payout, Giám sát Sức khỏe & Hoa hồng thành viên
             </p>
           </div>
         </div>
 
-        {/* Action Controls */}
+        {/* User Role Switcher & Action Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           
-          {/* Status Indicator */}
+          {/* Google Auth / Role Simulator */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            padding: '6px 12px',
-            borderRadius: '8px',
-            background: 'rgba(255, 255, 255, 0.04)',
-            fontSize: '0.78rem',
-            color: 'var(--text-muted)',
-            border: '1px solid var(--border-color)'
+            gap: '8px',
+            padding: '5px 10px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid var(--border-color)',
+            fontSize: '0.8rem'
           }}>
-            <span style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor: isMock ? '#F59E0B' : '#10B981',
-              boxShadow: isMock ? '0 0 8px #F59E0B' : '0 0 8px #10B981'
-            }}></span>
-            {isMock ? 'Chế độ Demo Preview' : 'Meta API Live'}
+            <UserCircle size={16} color="#A78BFA" />
+            <span style={{ color: 'var(--text-muted)' }}>Đăng nhập:</span>
+            <select
+              value={userRole}
+              onChange={(e) => onRoleChange(e.target.value)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="admin" style={{ background: '#0F1422' }}>Super Admin (Toàn quyền BM & Payout)</option>
+              <option value="member" style={{ background: '#0F1422' }}>Member (Editor Minh Tuấn - Nhận hoa hồng)</option>
+            </select>
           </div>
 
-          {/* Sync Button */}
+          {/* Sync BM Button */}
+          <button 
+            className="outline-btn"
+            onClick={onSyncBm}
+            disabled={isBmSyncing}
+            style={{ fontSize: '0.82rem', padding: '6px 12px' }}
+            title="Quét tự động các Page mới thêm hoặc bị gỡ khỏi Meta Business Manager"
+          >
+            <Building2 size={14} color="#38BDF8" />
+            {isBmSyncing ? 'Đang quét BM...' : 'Quét BM'}
+          </button>
+
+          {/* Daily Sync Button */}
           <button 
             className="glow-btn"
             onClick={onSyncNow}
             disabled={isSyncing}
-            style={{ opacity: isSyncing ? 0.7 : 1 }}
+            style={{ opacity: isSyncing ? 0.7 : 1, fontSize: '0.82rem', padding: '6px 14px' }}
           >
-            <RefreshCw size={15} className={isSyncing ? 'animate-spin' : ''} style={{
+            <RefreshCw size={14} style={{
               animation: isSyncing ? 'spin 1s linear infinite' : 'none'
             }} />
-            {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}
+            {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ số liệu'}
           </button>
 
-          {/* Add Page */}
-          <button className="outline-btn" onClick={onOpenAddPage}>
-            <Plus size={15} />
-            Thêm Page
-          </button>
+          {/* Add Page / Group - only for admin */}
+          {userRole === 'admin' && (
+            <>
+              <button className="outline-btn" onClick={onOpenAddPage} style={{ fontSize: '0.82rem', padding: '6px 12px' }}>
+                <Plus size={14} />
+                Thêm Page
+              </button>
+              <button className="outline-btn" onClick={onOpenAddGroup} style={{ fontSize: '0.82rem', padding: '6px 12px' }}>
+                <FolderPlus size={14} />
+                Tạo Nhóm
+              </button>
+            </>
+          )}
 
-          {/* Add Group */}
-          <button className="outline-btn" onClick={onOpenAddGroup}>
-            <FolderPlus size={15} />
-            Tạo Nhóm
-          </button>
         </div>
 
       </div>
