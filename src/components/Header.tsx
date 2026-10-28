@@ -1,7 +1,18 @@
 'use client';
 
-import React from 'react';
-import { RefreshCw, Plus, FolderPlus, Activity, Building2, UserCircle, Shield, Briefcase } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  RefreshCw, 
+  Plus, 
+  FolderPlus, 
+  Activity, 
+  Building2, 
+  UserCircle, 
+  LogOut, 
+  LogIn, 
+  Share2 
+} from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
 interface HeaderProps {
   onSyncNow: () => void;
@@ -26,6 +37,66 @@ export const Header: React.FC<HeaderProps> = ({
   userRole,
   onRoleChange
 }) => {
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // Lắng nghe trạng thái đăng nhập từ Supabase Auth
+  useEffect(() => {
+    if (!supabase) return;
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        setCurrentUser(data.user);
+        // Tự động phân quyền nếu email có chữ admin
+        if (data.user.email?.includes('admin')) {
+          onRoleChange('admin');
+        }
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user || null);
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Xử lý Đăng nhập Google qua Supabase OAuth
+  const handleGoogleLogin = async () => {
+    if (!supabase) {
+      alert('Vui lòng cấu hình Supabase để sử dụng Đăng nhập Google.');
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      alert(`Lỗi đăng nhập Google: ${err.message}`);
+      setAuthLoading(false);
+    }
+  };
+
+  // Xử lý Đăng xuất
+  const handleLogout = async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+    }
+  };
+
+  // Xử lý Kết nối Facebook Pages
+  const handleConnectFacebook = () => {
+    window.location.href = '/api/auth/facebook';
+  };
+
   return (
     <header className="glass-panel" style={{ padding: '16px 24px', marginBottom: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
@@ -59,22 +130,89 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* User Role Switcher & Action Controls */}
+        {/* Action Controls & Authentication */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           
-          {/* Google Auth / Role Simulator */}
+          {/* NÚT KẾT NỐI FACEBOOK PAGES */}
+          <button
+            onClick={handleConnectFacebook}
+            style={{
+              backgroundColor: '#1877F2',
+              color: '#fff',
+              border: 'none',
+              padding: '6px 14px',
+              borderRadius: '8px',
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(24, 119, 242, 0.4)'
+            }}
+            title="Đăng nhập Facebook để tự động kéo tất cả các Page bạn quản lý về hệ thống"
+          >
+            <Share2 size={14} />
+            Kết nối Facebook
+          </button>
+
+          {/* ĐĂNG NHẬP GOOGLE HOẶC USER PROFILE */}
+          {currentUser ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '4px 10px',
+              borderRadius: '8px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--border-color)',
+              fontSize: '0.8rem'
+            }}>
+              {currentUser.user_metadata?.avatar_url ? (
+                <img
+                  src={currentUser.user_metadata.avatar_url}
+                  alt="Avatar"
+                  style={{ width: '22px', height: '22px', borderRadius: '50%' }}
+                />
+              ) : (
+                <UserCircle size={18} color="#34D399" />
+              )}
+              <span style={{ color: '#fff', fontWeight: 600 }}>
+                {currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0]}
+              </span>
+              <button
+                onClick={handleLogout}
+                title="Đăng xuất"
+                style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              >
+                <LogOut size={14} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleGoogleLogin}
+              disabled={authLoading}
+              className="outline-btn"
+              style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+              title="Đăng nhập tài khoản Google qua Supabase Auth"
+            >
+              <LogIn size={14} color="#EA4335" />
+              {authLoading ? 'Đang chuyển...' : 'Đăng nhập Google'}
+            </button>
+          )}
+
+          {/* CHUYỂN ĐỔI VAI TRÒ GIẢ LẬP / KIỂM THỬ */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             padding: '5px 10px',
-            borderRadius: '10px',
-            background: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.03)',
             border: '1px solid var(--border-color)',
-            fontSize: '0.8rem'
+            fontSize: '0.78rem'
           }}>
-            <UserCircle size={16} color="#A78BFA" />
-            <span style={{ color: 'var(--text-muted)' }}>Đăng nhập:</span>
+            <span style={{ color: 'var(--text-subtle)' }}>Quyền:</span>
             <select
               value={userRole}
               onChange={(e) => onRoleChange(e.target.value)}
@@ -83,26 +221,25 @@ export const Header: React.FC<HeaderProps> = ({
                 border: 'none',
                 color: '#fff',
                 fontWeight: 600,
-                fontSize: '0.8rem',
+                fontSize: '0.78rem',
                 cursor: 'pointer',
                 outline: 'none'
               }}
             >
-              <option value="admin" style={{ background: '#0F1422' }}>Super Admin (Toàn quyền BM & Payout)</option>
-              <option value="member" style={{ background: '#0F1422' }}>Member (Editor Minh Tuấn - Nhận hoa hồng)</option>
+              <option value="admin" style={{ background: '#0F1422' }}>Super Admin</option>
+              <option value="member" style={{ background: '#0F1422' }}>Member (Editor)</option>
             </select>
           </div>
 
-          {/* Sync BM Button */}
+          {/* Quét BM Button */}
           <button 
             className="outline-btn"
             onClick={onSyncBm}
             disabled={isBmSyncing}
-            style={{ fontSize: '0.82rem', padding: '6px 12px' }}
-            title="Quét tự động các Page mới thêm hoặc bị gỡ khỏi Meta Business Manager"
+            style={{ fontSize: '0.8rem', padding: '6px 12px' }}
           >
-            <Building2 size={14} color="#38BDF8" />
-            {isBmSyncing ? 'Đang quét BM...' : 'Quét BM'}
+            <Building2 size={13} color="#38BDF8" />
+            {isBmSyncing ? 'Đang quét...' : 'Quét BM'}
           </button>
 
           {/* Daily Sync Button */}
@@ -110,23 +247,23 @@ export const Header: React.FC<HeaderProps> = ({
             className="glow-btn"
             onClick={onSyncNow}
             disabled={isSyncing}
-            style={{ opacity: isSyncing ? 0.7 : 1, fontSize: '0.82rem', padding: '6px 14px' }}
+            style={{ opacity: isSyncing ? 0.7 : 1, fontSize: '0.8rem', padding: '6px 14px' }}
           >
-            <RefreshCw size={14} style={{
+            <RefreshCw size={13} style={{
               animation: isSyncing ? 'spin 1s linear infinite' : 'none'
             }} />
-            {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ số liệu'}
+            {isSyncing ? 'Đang sync...' : 'Đồng bộ'}
           </button>
 
-          {/* Add Page / Group - only for admin */}
+          {/* Add Page / Group */}
           {userRole === 'admin' && (
             <>
-              <button className="outline-btn" onClick={onOpenAddPage} style={{ fontSize: '0.82rem', padding: '6px 12px' }}>
-                <Plus size={14} />
+              <button className="outline-btn" onClick={onOpenAddPage} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
+                <Plus size={13} />
                 Thêm Page
               </button>
-              <button className="outline-btn" onClick={onOpenAddGroup} style={{ fontSize: '0.82rem', padding: '6px 12px' }}>
-                <FolderPlus size={14} />
+              <button className="outline-btn" onClick={onOpenAddGroup} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
+                <FolderPlus size={13} />
                 Tạo Nhóm
               </button>
             </>
