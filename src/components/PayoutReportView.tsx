@@ -12,12 +12,19 @@ interface PayoutReportViewProps {
 export const PayoutReportView: React.FC<PayoutReportViewProps> = ({ payoutReports, period }) => {
   const totalPayoutAll = payoutReports.reduce((sum, item) => sum + item.total_earnings, 0);
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(val || 0);
+  const formatCurrency = (val: number, currency?: string) => {
+    if (!currency) {
+      return (val || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 2
+      }).format(val || 0);
+    } catch {
+      return `${(val || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`;
+    }
   };
 
   return (

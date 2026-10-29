@@ -16,12 +16,19 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ summary }) => {
     return num.toLocaleString();
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(amount || 0);
+  const formatCurrency = (amount: number, currency?: string) => {
+    if (!currency) {
+      return (amount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 2
+      }).format(amount || 0);
+    } catch {
+      return `${(amount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`;
+    }
   };
 
   const cards = [

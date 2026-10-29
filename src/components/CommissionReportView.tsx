@@ -17,12 +17,19 @@ export const CommissionReportView: React.FC<CommissionReportViewProps> = ({
 }) => {
   const totalCommissionAll = commissions.reduce((sum, item) => sum + item.user_payout_amount, 0);
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(val || 0);
+  const formatCurrency = (val: number, currency?: string) => {
+    if (!currency) {
+      return (val || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 2
+      }).format(val || 0);
+    } catch {
+      return `${(val || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`;
+    }
   };
 
   return (

@@ -68,3 +68,65 @@ GET https://graph.facebook.com/v19.0/{page-id}/insights?
 **Công thức phát hiện:**
 $$\text{Viral Ratio} = \frac{\text{page\_impressions\_viral}}{\text{page\_impressions}} \times 100\%$$
 - Nếu $\text{Viral Ratio}$ trong 3 ngày liên tiếp giảm **> 65%** so với trung bình 7 ngày trước đó, hệ thống tự động đổi `recommendation_status = 'dropped'` và phát chuông cảnh báo trên Dashboard.
+
+---
+
+## 4. TÍCH HỢP DOANH THU KIẾM TIỀN CHUẨN META GRAPH API v23.0
+
+Từ Graph API v23.0 (theo [Graph API v23.0 update của Meta](https://developers.facebook.com/blog/post/2025/05/29/introducing-graph-api-v23-and-marketing-api-v23/)), Meta đã giới thiệu hai metric doanh thu chuyên biệt cần được gọi qua phương thức **POST** và tách biệt độc lập:
+
+### 4.1 Danh sách Endpoints v23.0:
+
+| Mức độ | Metric | Endpoint (POST) |
+| :--- | :--- | :--- |
+| **Cấp Trang (Page level)** | `content_monetization_earnings` | `POST https://graph.facebook.com/v23.0/{page_id}/content_monetization_earnings` |
+| **Cấp Trang (Page level)** | `monetization_approximate_earnings` | `POST https://graph.facebook.com/v23.0/{page_id}/monetization_approximate_earnings` |
+| **Cấp Bài đăng / Video** | `content_monetization_earnings` | `POST https://graph.facebook.com/v23.0/{page_id}_{asset_id}/content_monetization_earnings` |
+| **Cấp Bài đăng / Video** | `monetization_approximate_earnings` | `POST https://graph.facebook.com/v23.0/{page_id}_{asset_id}/monetization_approximate_earnings` |
+
+---
+
+### 4.2 Đặc tả chi tiết từng Metric & Quy tắc xử lý dữ liệu:
+
+#### 1. `content_monetization_earnings`
+- **Đặc điểm:** Doanh thu thực tế gắn với nội dung đã được ghi nhận trong hệ thống kiếm tiền.
+- **Quy tắc định dạng số tiền:**
+  - Có thể trả về số tiền dạng `micro_amount` (ví dụ `1,000,000` micro_amount = `1.00` đơn vị tiền tệ) kèm mã tiền tệ `currency` (ví dụ `"USD"`, `"VND"`).
+  - Thuật toán chuyển đổi: $\text{amount} = \frac{\text{micro\_amount}}{1,000,000}$ nếu trường `micro_amount` tồn tại.
+  - Luôn lưu giữ trường `currency` đi kèm để hiển thị chính xác theo đơn vị thực tế.
+
+#### 2. `monetization_approximate_earnings`
+- **Đặc điểm:** Doanh thu **ước tính (approximate)**, không phải số tiền thanh toán cuối cùng (Final Payout).
+- **Rủi ro điều chỉnh:** Có thể thay đổi sau đó do quá trình kiểm duyệt nội dung, khiếu nại bản quyền hoặc điều chỉnh đối soát từ Meta.
+- **QUY TẮC CỐT LÕI VỀ TIỀN TỆ:**
+  - Có thể trả về số thuần **không kèm đơn vị / tiền tệ (`currency`/`unit`)**.
+  - **TUYỆT ĐỐI KHÔNG** được tự động gán mặc định là `USD` rồi định dạng hai chữ số thập phân (`$0.00`) nếu API không trả trường `currency`/`unit`.
+  - Hệ thống lưu trữ cả giá trị thô (`raw_value`) và cờ `has_currency` để giao diện hiển thị linh hoạt (nếu có currency hiển thị mã tiền tệ, nếu không có hiển thị dạng số chỉ số lượng thuần).
+
+---
+
+### 4.3 Độ trễ dữ liệu & Xử lý ngoại lệ (Graceful Degradation)
+- **Độ trễ:** Dữ liệu doanh thu kiếm tiền của Meta thường có độ trễ từ **24 đến 48 giờ** so với thời gian thực.
+- **Trường hợp không có dữ liệu:** API có thể không trả về hoặc báo lỗi trong các trường hợp:
+  1. Trang chưa tham gia hoặc chưa đủ điều kiện bật kiếm tiền (In-stream Ads / Reels Play).
+  2. Trang đang bị hạn chế (Restricted) hoặc vi phạm chính sách.
+  3. Token của người dùng / System User thiếu quyền hạn (`read_insights`, `pages_read_engagement`, `pages_read_user_content`).
+- **Xử lý:** Khi một trong hai endpoint không trả dữ liệu, hệ thống tự động ghi nhận `is_available: false`, ghi log cảnh báo và **không làm gián đoạn** tiến trình đồng bộ các chỉ số khác của Trang.
+
+---
+
+### 4.4 Phân biệt cấp Page vs cấp Bài đăng (Post / Asset level)
+- Các tham số về thời gian (`period`, `since`, `until`) và phân tích (`breakdown`) có sự khác biệt giữa cấp Page và cấp Bài đăng:
+  - Cấp Page hỗ trợ tổng hợp theo chu kỳ ngày (`period=day`).
+  - Cấp Bài đăng / Asset (`{page_id}_{asset_id}`) gắn liền với vòng đời của video/bài đăng cụ thể và có thể chỉ hỗ trợ `lifetime` hoặc breakdown theo vị trí đặt quảng cáo.
+  - **Không dùng chung một tham số truy vấn cho cả hai cấp độ.**
+
+---
+
+### 4.5 Tài liệu kỹ thuật tham khảo chính thức:
+- [Meta Developer Blog - Graph API v23.0 & Marketing API v23.0 Update](https://developers.facebook.com/blog/post/2025/05/29/introducing-graph-api-v23-and-marketing-api-v23/)
+- [Page Insights API Reference](https://developers.facebook.com/docs/graph-api/reference/page/insights/)
+- [Insights API Overview](https://developers.facebook.com/docs/graph-api/reference/insights/)
+- [Pages API Reference](https://developers.facebook.com/docs/pages-api/)
+- [Meta Facebook Login - Access Tokens Guide](https://developers.facebook.com/docs/facebook-login/guides/access-tokens/)
+- [Permissions Reference](https://developers.facebook.com/docs/permissions/reference/)
