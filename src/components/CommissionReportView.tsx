@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { UserCommissionItem } from '@/lib/mock-data';
-import { Wallet, Percent, UserCheck, ArrowDownRight, Award } from 'lucide-react';
+import { Wallet, Percent, UserCheck, ArrowDownRight, Award, FileSpreadsheet, FileText } from 'lucide-react';
+import { exportToExcel, exportToCsv } from '@/lib/export-excel';
 
 interface CommissionReportViewProps {
   commissions: UserCommissionItem[];
@@ -30,6 +31,39 @@ export const CommissionReportView: React.FC<CommissionReportViewProps> = ({
     } catch {
       return `${(val || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`;
     }
+  };
+
+  const handleExportExcel = () => {
+    const exportData = commissions.map((c, idx) => ({
+      'STT': idx + 1,
+      'Nhân Viên': c.user_name,
+      'Mã Nhân Viên': c.user_id,
+      'Vai Trò': c.user_role === 'admin' ? 'Quản trị viên' : c.user_role === 'manager' ? 'Quản lý nhóm' : 'Thành viên / Editor',
+      'Trang Phụ Trách': c.page_name,
+      'Page ID': c.page_id,
+      'Doanh Thu Trang ($)': c.page_total_earnings,
+      'Tỷ Lệ Hoa Hồng (%)': `${c.commission_rate_pct}%`,
+      'Hoa Hồng Thực Nhận ($)': c.user_payout_amount,
+      'Chu Kỳ': period.toUpperCase(),
+      'Ngày Xuất': new Date().toLocaleDateString('vi-VN')
+    }));
+
+    exportToExcel(`Hoa-Hong-Nhan-Su-${period}-${Date.now()}`, [
+      { sheetName: 'Hoa Hồng Nhân Sự', data: exportData }
+    ]);
+  };
+
+  const handleExportCsv = () => {
+    const exportData = commissions.map((c, idx) => ({
+      'STT': idx + 1,
+      'Nhân Viên': c.user_name,
+      'Trang': c.page_name,
+      'Doanh Thu Trang ($)': c.page_total_earnings,
+      'Hoa Hồng (%)': `${c.commission_rate_pct}%`,
+      'Thực Nhận ($)': c.user_payout_amount
+    }));
+
+    exportToCsv(`Hoa-Hong-Nhan-Su-${period}-${Date.now()}`, exportData);
   };
 
   return (
@@ -61,12 +95,36 @@ export const CommissionReportView: React.FC<CommissionReportViewProps> = ({
           </p>
         </div>
 
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            {userRole === 'member' ? 'Hoa Hồng Thực Nhận Của Bạn' : 'Tổng Quỹ Hoa Hồng Đã Chia'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              {userRole === 'member' ? 'Hoa Hồng Thực Nhận Của Bạn' : 'Tổng Quỹ Hoa Hồng Đã Chia'}
+            </div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#F472B6', letterSpacing: '-0.02em' }}>
+              {formatCurrency(totalCommissionAll)}
+            </div>
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#F472B6', letterSpacing: '-0.02em' }}>
-            {formatCurrency(totalCommissionAll)}
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={handleExportExcel}
+              className="secondary-btn"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', padding: '8px 12px' }}
+              title="Xuất bảng hoa hồng ra file Excel (.xlsx)"
+            >
+              <FileSpreadsheet size={15} color="#10B981" />
+              <span>Xuất Excel</span>
+            </button>
+
+            <button
+              onClick={handleExportCsv}
+              className="secondary-btn"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', padding: '8px 12px' }}
+              title="Xuất bảng hoa hồng ra file CSV"
+            >
+              <FileText size={15} color="#38BDF8" />
+              <span>Xuất CSV</span>
+            </button>
           </div>
         </div>
       </div>

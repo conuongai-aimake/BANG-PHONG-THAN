@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { FacebookPage, PageGroup, PayoutProfile } from '@/lib/mock-data';
-import { CheckCircle2, AlertTriangle, AlertOctagon, TrendingDown, Copy, Landmark, UserX } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, AlertOctagon, TrendingDown, Copy, Landmark, UserX, FileSpreadsheet, FileText } from 'lucide-react';
+import { exportToExcel, exportToCsv } from '@/lib/export-excel';
 
 interface PagesTableProps {
   pages: FacebookPage[];
@@ -40,9 +41,53 @@ export const PagesTable: React.FC<PagesTableProps> = ({
     alert(`Đã sao chép Page ID: ${text}`);
   };
 
+  const handleExportExcel = () => {
+    const exportData = pages.map((p, idx) => {
+      const payout = getPayoutInfo(p.payout_profile_id);
+      return {
+        'STT': idx + 1,
+        'Tên Trang': p.name,
+        'Page ID': p.page_id,
+        'Thể loại': p.category || 'Media',
+        'Nhóm Phụ Trách': getGroupName(p.group_ids),
+        'Hồ Sơ Payout': payout.name,
+        'Ngân Hàng': payout.bank,
+        'Sức Khỏe Kiếm Tiền': p.monetization_status === 'eligible' ? 'Trang Xanh (Bình thường)' : p.monetization_status === 'restricted' ? 'Trang Vàng (Hạn chế)' : 'Trang Đỏ (Tắt kiếm tiền)',
+        'Trạng Thái Đề Xuất': p.recommendation_status === 'normal' ? 'Phân phối bình thường' : p.recommendation_status === 'warning' ? 'Xu hướng giảm' : 'MẤT ĐỀ XUẤT (-65%)',
+        'Trạng Thái BM': p.bm_sync_status === 'active' ? 'Đang thuộc BM' : 'Đã bị gỡ khỏi BM',
+        'Chu kỳ': period.toUpperCase(),
+        'Ngày xuất': new Date().toLocaleDateString('vi-VN')
+      };
+    });
+
+    exportToExcel(`Bao-Cao-Trang-Facebook-${period}-${Date.now()}`, [
+      { sheetName: 'Danh Sách Trang', data: exportData }
+    ]);
+  };
+
+  const handleExportCsv = () => {
+    const exportData = pages.map((p, idx) => {
+      const payout = getPayoutInfo(p.payout_profile_id);
+      return {
+        'STT': idx + 1,
+        'Tên Trang': p.name,
+        'Page ID': p.page_id,
+        'Thể loại': p.category || 'Media',
+        'Nhóm Phụ Trách': getGroupName(p.group_ids),
+        'Hồ Sơ Payout': payout.name,
+        'Ngân Hàng': payout.bank,
+        'Sức Khỏe Kiếm Tiền': p.monetization_status === 'eligible' ? 'Trang Xanh' : p.monetization_status === 'restricted' ? 'Trang Vàng' : 'Trang Đỏ',
+        'Trạng Thái Đề Xuất': p.recommendation_status === 'normal' ? 'Bình thường' : p.recommendation_status === 'warning' ? 'Giảm nhẹ' : 'Mất đề xuất',
+        'Trạng Thái BM': p.bm_sync_status === 'active' ? 'Trong BM' : 'Đã gỡ khỏi BM'
+      };
+    });
+
+    exportToCsv(`Bao-Cao-Trang-Facebook-${period}-${Date.now()}`, exportData);
+  };
+
   return (
     <div className="glass-panel" style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff' }}>
             Bảng Quản Trị Chi Tiết: Payout, Sức Khỏe Kiếm Tiền & Đề Xuất
@@ -51,9 +96,32 @@ export const PagesTable: React.FC<PagesTableProps> = ({
             Theo dõi phân bổ Payout, gậy chính sách và tình trạng liên kết Business Manager
           </p>
         </div>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          Tổng số: <strong>{pages.length}</strong> Trang
-        </span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '6px' }}>
+            Tổng số: <strong>{pages.length}</strong> Trang
+          </span>
+
+          <button
+            onClick={handleExportExcel}
+            className="secondary-btn"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', padding: '6px 12px' }}
+            title="Xuất bảng ra file Microsoft Excel (.xlsx)"
+          >
+            <FileSpreadsheet size={14} color="#10B981" />
+            <span>Xuất Excel (.xlsx)</span>
+          </button>
+
+          <button
+            onClick={handleExportCsv}
+            className="secondary-btn"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', padding: '6px 12px' }}
+            title="Xuất bảng ra file CSV (UTF-8 tiếng Việt)"
+          >
+            <FileText size={14} color="#38BDF8" />
+            <span>Xuất CSV</span>
+          </button>
+        </div>
       </div>
 
       <div style={{ overflowX: 'auto' }}>

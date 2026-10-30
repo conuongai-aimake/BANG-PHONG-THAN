@@ -27,7 +27,8 @@ import {
   getMockPayoutReports,
   getMockUserCommissions
 } from '@/lib/mock-data';
-import { BarChart2, Landmark, Award, CheckCircle, AlertCircle } from 'lucide-react';
+import { BarChart2, Landmark, Award, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react';
+import { exportToExcel } from '@/lib/export-excel';
 
 export default function DashboardPage() {
   const [activeViewMode, setActiveViewMode] = useState<'overview' | 'payouts' | 'commissions'>('overview');
@@ -123,6 +124,109 @@ export default function DashboardPage() {
   const payoutReports = getMockPayoutReports(period);
   const userCommissions = getMockUserCommissions(period, userRole);
 
+  const handleExportFullWorkbook = () => {
+    // 1. Sheet KPI Tổng quan
+    const kpiData = [
+      {
+        'Chỉ Số Phân Tích': 'Doanh Thu Ước Tính (Estimated Earnings)',
+        'Giá Trị': summary.total_estimated_earnings,
+        'Đơn Vị': 'USD',
+        'Tăng Trưởng': `${summary.earnings_growth_pct > 0 ? '+' : ''}${summary.earnings_growth_pct}%`
+      },
+      {
+        'Chỉ Số Phân Tích': 'Lượt Xem Video 1 Phút (In-Stream Views)',
+        'Giá Trị': summary.total_video_views_1m,
+        'Đơn Vị': 'Lượt xem',
+        'Tăng Trưởng': `${summary.views_1m_growth_pct > 0 ? '+' : ''}${summary.views_1m_growth_pct}%`
+      },
+      {
+        'Chỉ Số Phân Tích': 'Lượt Tiếp Cận (Page Reach)',
+        'Giá Trị': summary.total_reach,
+        'Đơn Vị': 'Lượt người',
+        'Tăng Trưởng': `${summary.reach_growth_pct > 0 ? '+' : ''}${summary.reach_growth_pct}%`
+      },
+      {
+        'Chỉ Số Phân Tích': 'Lượt Xem Video 3 Giây',
+        'Giá Trị': summary.total_video_views_3s,
+        'Đơn Vị': 'Lượt xem',
+        'Tăng Trưởng': '-'
+      },
+      {
+        'Chỉ Số Phân Tích': 'Lượt Hiển Thị (Impressions)',
+        'Giá Trị': summary.total_impressions,
+        'Đơn Vị': 'Lượt hiển thị',
+        'Tăng Trưởng': '-'
+      },
+      {
+        'Chỉ Số Phân Tích': 'RPM Trung Bình',
+        'Giá Trị': summary.avg_rpm,
+        'Đơn Vị': 'USD / 1k views',
+        'Tăng Trưởng': '-'
+      },
+      {
+        'Chỉ Số Phân Tích': 'CPM Trung Bình',
+        'Giá Trị': summary.avg_cpm,
+        'Đơn Vị': 'USD / 1k impressions',
+        'Tăng Trưởng': '-'
+      }
+    ];
+
+    // 2. Sheet Danh Sách Trang
+    const pagesData = pages.map((p, idx) => {
+      const g = groups.find(x => p.group_ids?.includes(x.id));
+      const po = payoutProfiles.find(x => x.id === p.payout_profile_id);
+      return {
+        'STT': idx + 1,
+        'Tên Trang': p.name,
+        'Page ID': p.page_id,
+        'Nhóm': g ? g.name : 'Chưa gán nhóm',
+        'Hồ Sơ Payout': po ? po.name : 'Chưa gắn',
+        'Ngân Hàng': po ? po.bank_name : '',
+        'Trạng Thái Kiếm Tiền': p.monetization_status === 'eligible' ? 'Trang Xanh (Eligible)' : p.monetization_status === 'restricted' ? 'Trang Vàng (Restricted)' : 'Trang Đỏ (Demonetized)',
+        'Trạng Thái Đề Xuất': p.recommendation_status === 'normal' ? 'Bình thường' : p.recommendation_status === 'warning' ? 'Cảnh báo giảm' : 'MẤT ĐỀ XUẤT (-65%)',
+        'Trạng Thái BM': p.bm_sync_status === 'active' ? 'Trong BM' : 'Đã gỡ khỏi BM'
+      };
+    });
+
+    // 3. Sheet Đối Soát Payout
+    const payoutData = payoutReports.map((p, idx) => ({
+      'STT': idx + 1,
+      'Hồ Sơ Payout': p.payout_name,
+      'Chủ Tài Khoản': p.account_holder,
+      'Ngân Hàng': p.bank_name,
+      'Số Trang Thuộc Payout': p.total_pages,
+      'Danh Sách Trang': (p.pages_list || []).join(', '),
+      'Tổng Doanh Thu ($)': p.total_earnings,
+      'Chu Kỳ': period.toUpperCase(),
+      'Trạng Thái': p.status === 'active' ? 'Đủ điều kiện giải ngân' : 'Tạm dừng'
+    }));
+
+    // 4. Sheet Hoa Hồng Nhân Sự
+    const commissionData = userCommissions.map((c, idx) => ({
+      'STT': idx + 1,
+      'Nhân Viên': c.user_name,
+      'Mã Nhân Viên': c.user_id,
+      'Trang Phụ Trách': c.page_name,
+      'Page ID': c.page_id,
+      'Doanh Thu Trang ($)': c.page_total_earnings,
+      'Tỷ Lệ Hoa Hồng (%)': `${c.commission_rate_pct}%`,
+      'Hoa Hồng Thực Nhận ($)': c.user_payout_amount,
+      'Chu Kỳ': period.toUpperCase()
+    }));
+
+    exportToExcel(`Bang-Phong-Than-Bao-Cao-Toan-Dien-${period}-${Date.now()}`, [
+      { sheetName: '1. Tổng Quan KPI', data: kpiData },
+      { sheetName: '2. Danh Sách Trang', data: pagesData },
+      { sheetName: '3. Đối Soát Payout', data: payoutData },
+      { sheetName: '4. Hoa Hồng Nhân Sự', data: commissionData }
+    ]);
+
+    setToastMessage({
+      type: 'success',
+      text: `Đã xuất thành công file Excel toàn diện (4 Sheets: KPI, Pages, Payout, Hoa hồng)!`
+    });
+  };
+
   return (
     <main style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px 60px' }}>
       
@@ -211,10 +315,32 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <PeriodSelector
-          currentPeriod={period}
-          onSelectPeriod={setPeriod}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleExportFullWorkbook}
+            className="secondary-btn"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              padding: '8px 14px',
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              color: '#34D399'
+            }}
+            title="Xuất trọn bộ báo cáo (KPI, Trang, Payout, Hoa hồng) ra 1 file Excel duy nhất"
+          >
+            <FileSpreadsheet size={16} color="#34D399" />
+            <span>Xuất Full Báo Cáo (.xlsx)</span>
+          </button>
+
+          <PeriodSelector
+            currentPeriod={period}
+            onSelectPeriod={setPeriod}
+          />
+        </div>
       </div>
 
       {/* VIEW 1: V1 CORE TOÀN DIỆN */}

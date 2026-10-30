@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { PayoutReportItem } from '@/lib/mock-data';
-import { CreditCard, Landmark, CheckCircle, ArrowUpRight, DollarSign } from 'lucide-react';
+import { CreditCard, Landmark, CheckCircle, ArrowUpRight, DollarSign, FileSpreadsheet, FileText } from 'lucide-react';
+import { exportToExcel, exportToCsv } from '@/lib/export-excel';
 
 interface PayoutReportViewProps {
   payoutReports: PayoutReportItem[];
@@ -25,6 +26,40 @@ export const PayoutReportView: React.FC<PayoutReportViewProps> = ({ payoutReport
     } catch {
       return `${(val || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`;
     }
+  };
+
+  const handleExportExcel = () => {
+    const exportData = payoutReports.map((p, idx) => ({
+      'STT': idx + 1,
+      'Tên Hồ Sơ Payout': p.payout_name,
+      'Người Thụ Hưởng': p.account_holder,
+      'Ngân Hàng': p.bank_name,
+      'Số Page Thuộc Payout': p.total_pages,
+      'Danh Sách Trang': (p.pages_list || []).join(', '),
+      'Tổng Doanh Thu ($)': p.total_earnings,
+      'Chu Kỳ': period.toUpperCase(),
+      'Trạng Thái': p.status === 'active' ? 'Đủ điều kiện giải ngân' : 'Tạm dừng',
+      'Ngày Xuất': new Date().toLocaleDateString('vi-VN')
+    }));
+
+    exportToExcel(`Doi-Soat-Payout-${period}-${Date.now()}`, [
+      { sheetName: 'Đối Soát Payout', data: exportData }
+    ]);
+  };
+
+  const handleExportCsv = () => {
+    const exportData = payoutReports.map((p, idx) => ({
+      'STT': idx + 1,
+      'Tên Hồ Sơ Payout': p.payout_name,
+      'Người Thụ Hưởng': p.account_holder,
+      'Ngân Hàng': p.bank_name,
+      'Số Page': p.total_pages,
+      'Doanh Thu ($)': p.total_earnings,
+      'Chu Kỳ': period.toUpperCase(),
+      'Trạng Thái': p.status
+    }));
+
+    exportToCsv(`Doi-Soat-Payout-${period}-${Date.now()}`, exportData);
   };
 
   return (
@@ -54,10 +89,34 @@ export const PayoutReportView: React.FC<PayoutReportViewProps> = ({ payoutReport
           </p>
         </div>
 
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Tổng Tiền Chờ Quyết Toán</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#34D399', letterSpacing: '-0.02em' }}>
-            {formatCurrency(totalPayoutAll)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Tổng Tiền Chờ Quyết Toán</div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#34D399', letterSpacing: '-0.02em' }}>
+              {formatCurrency(totalPayoutAll)}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={handleExportExcel}
+              className="secondary-btn"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', padding: '8px 12px' }}
+              title="Xuất bảng đối soát ra file Excel (.xlsx)"
+            >
+              <FileSpreadsheet size={15} color="#10B981" />
+              <span>Xuất Excel</span>
+            </button>
+
+            <button
+              onClick={handleExportCsv}
+              className="secondary-btn"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', padding: '8px 12px' }}
+              title="Xuất bảng đối soát ra file CSV"
+            >
+              <FileText size={15} color="#38BDF8" />
+              <span>Xuất CSV</span>
+            </button>
           </div>
         </div>
       </div>
