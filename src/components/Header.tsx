@@ -56,12 +56,19 @@ export const Header: React.FC<HeaderProps> = ({
         setCurrentUser(data.user);
         if (data.user.email?.includes('admin')) {
           onRoleChange('admin');
+        } else {
+          onRoleChange('member');
         }
       }
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUser(session?.user || null);
+      if (session?.user?.email?.includes('admin')) {
+        onRoleChange('admin');
+      } else if (session?.user) {
+        onRoleChange('member');
+      }
     });
 
     return () => {
@@ -85,16 +92,27 @@ export const Header: React.FC<HeaderProps> = ({
         }
       });
       if (error) {
-        // Nếu Google provider chưa bật trên Supabase console, tự động chuyển sang đăng nhập Email
-        setLoginError('Google OAuth chưa được kích hoạt trên Supabase. Bạn có thể đăng nhập bằng Email/Password bên dưới:');
-        setShowLoginModal(true);
+        setLoginError(`Google OAuth: ${error.message}. Bạn có thể đăng nhập bằng Email hoặc dùng nút Đăng Nhập Nhanh bên dưới.`);
       }
     } catch (err: any) {
       setLoginError(err.message);
-      setShowLoginModal(true);
     } finally {
       setAuthLoading(false);
     }
+  };
+
+  // Đăng nhập nhanh kiểm thử theo vai trò (Không cần mật khẩu)
+  const handleQuickDemoLogin = (role: 'admin' | 'member') => {
+    const demoUser = {
+      id: role === 'admin' ? 'demo-admin-id' : 'demo-member-id',
+      email: role === 'admin' ? 'admin@bangphongthan.com' : 'editor.media@bangphongthan.com',
+      user_metadata: {
+        full_name: role === 'admin' ? 'Super Admin (Ban Quản Trị)' : 'Minh Đức (Content Editor)'
+      }
+    };
+    setCurrentUser(demoUser);
+    onRoleChange(role);
+    setShowLoginModal(false);
   };
 
   // Đăng nhập bằng Email/Password (Luôn hoạt động 100% trên Supabase không cần bên thứ 3)
@@ -119,6 +137,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       if (data?.user) {
         setCurrentUser(data.user);
+        onRoleChange(data.user.email?.includes('admin') ? 'admin' : 'member');
         setShowLoginModal(false);
       }
     } catch (err: any) {
@@ -131,8 +150,9 @@ export const Header: React.FC<HeaderProps> = ({
   const handleLogout = async () => {
     if (supabase) {
       await supabase.auth.signOut();
-      setCurrentUser(null);
     }
+    setCurrentUser(null);
+    onRoleChange('admin');
   };
 
   return (
@@ -372,35 +392,86 @@ export const Header: React.FC<HeaderProps> = ({
               disabled={authLoading}
               style={{
                 width: '100%',
-                padding: '10px',
+                padding: '11px',
                 borderRadius: '8px',
                 background: '#fff',
                 color: '#1F2937',
                 border: 'none',
-                fontWeight: 600,
-                fontSize: '0.85rem',
+                fontWeight: 700,
+                fontSize: '0.86rem',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                marginBottom: '16px'
+                marginBottom: '14px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
               }}
             >
               <LogIn size={16} color="#EA4335" />
               Đăng nhập bằng tài khoản Google
             </button>
 
+            {/* Quick Demo Logins */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              padding: '12px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid var(--border-color)',
+              marginBottom: '14px'
+            }}>
+              <span style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: 600 }}>
+                ⚡ ĐĂNG NHẬP NHANH KIỂM THỬ PHÂN QUYỀN (RBAC):
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleQuickDemoLogin('admin')}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    background: 'rgba(59, 130, 246, 0.15)',
+                    color: '#60A5FA',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Super Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickDemoLogin('member')}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(192, 132, 252, 0.4)',
+                    background: 'rgba(192, 132, 252, 0.15)',
+                    color: '#C084FC',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Member (Editor)
+                </button>
+              </div>
+            </div>
+
             <div style={{
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              margin: '14px 0',
+              margin: '12px 0',
               color: 'var(--text-subtle)',
-              fontSize: '0.75rem'
+              fontSize: '0.74rem'
             }}>
               <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
-              <span>HOẶC ĐĂNG NHẬP NHANH BẰNG EMAIL</span>
+              <span>HOẶC ĐĂNG NHẬP BẰNG EMAIL</span>
               <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
             </div>
 

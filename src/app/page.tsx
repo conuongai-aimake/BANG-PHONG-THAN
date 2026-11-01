@@ -72,6 +72,45 @@ export default function DashboardPage() {
     fetchReport();
   }, [period, selectedGroupId]);
 
+  // Lắng nghe kết quả từ Facebook OAuth hoặc Google Login callback
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const fbConnected = params.get('fb_connected');
+    const fbCount = params.get('count');
+    const fbError = params.get('fb_error');
+    const authStatus = params.get('auth');
+    const authError = params.get('auth_error');
+
+    if (fbConnected === 'success') {
+      setToastMessage({
+        type: 'success',
+        text: `Kết nối Facebook thành công! Đã tự động đồng bộ ${fbCount ? `${fbCount} Trang` : 'danh sách Trang'} vào cơ sở dữ liệu.`
+      });
+      fetchReport();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (fbError) {
+      setToastMessage({
+        type: 'error',
+        text: `Lỗi kết nối Facebook: ${decodeURIComponent(fbError)}`
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (authStatus === 'success') {
+      setToastMessage({
+        type: 'success',
+        text: 'Đăng nhập tài khoản Google thành công! Quyền truy cập và báo cáo đã được kích hoạt.'
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (authError) {
+      setToastMessage({
+        type: 'error',
+        text: `Lỗi đăng nhập: ${decodeURIComponent(authError)}`
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const handleSyncNow = async () => {
     setIsSyncing(true);
     try {

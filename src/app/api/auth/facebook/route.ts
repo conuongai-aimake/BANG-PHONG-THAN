@@ -11,10 +11,11 @@ export async function GET(req: NextRequest) {
 
   // Kiểm tra nếu chưa điền META_APP_ID
   if (!appId || appId === 'your-meta-app-id') {
-    return NextResponse.json({
-      error: 'Chưa cấu hình META_APP_ID trong biến môi trường.',
-      instruction: 'Vui lòng thêm META_APP_ID và META_APP_SECRET vào Vercel Settings để kích hoạt Facebook Login.'
-    }, { status: 400 });
+    return NextResponse.redirect(
+      `${origin}/?fb_error=${encodeURIComponent(
+        'Chưa cấu hình META_APP_ID trong biến môi trường. Vui lòng sử dụng tính năng "Dán Access Token / System User Token" để kết nối ngay lập tức.'
+      )}`
+    );
   }
 
   // Danh sách các quyền cần xin khi đăng nhập Facebook
